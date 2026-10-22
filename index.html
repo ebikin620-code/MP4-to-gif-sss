@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>動画からGIFへ簡単変換！ - MP4 to GIF Converter</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- gifshot Library (ブラウザ上でGIFを生成するライブラリ) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gifshot/0.3.2/gifshot.min.js"></script>
+</head>
+<body class="bg-gray-50 min-h-screen flex flex-col justify-between text-gray-800">
+
+    <!-- ヘッダー -->
+    <header class="bg-indigo-600 text-white py-6 shadow-md">
+        <div class="container mx-auto px-4 text-center">
+            <h1 class="text-3xl font-bold">🎬 MP4 to GIF Converter</h1>
+            <p class="mt-2 text-indigo-200">お気に入りの動画を、ブラウザ上で手軽にGIFアニメーションに変換しよう！</p>
+        </div>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <main class="container mx-auto px-4 py-8 max-w-2xl flex-grow">
+        <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 space-y-6">
+            
+            <!-- ファイル選択エリア -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-700 mb-2">動画ファイルを選択 (MP4, WebMなど)</label>
+                <input type="file" id="videoInput" accept="video/*" 
+                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border border-gray-200 rounded-xl p-2">
+            </div>
+
+            <!-- プレビューと設定 -->
+            <div id="previewContainer" class="hidden space-y-4">
+                <div class="border rounded-xl overflow-hidden bg-black flex justify-center">
+                    <video id="videoPreview" controls class="max-h-64 w-auto"></video>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">フレームレート (FPS)</label>
+                        <select id="fpsSelect" class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white">
+                            <option value="5">5 fps (軽量)</option>
+                            <option value="10" selected>10 fps (標準)</option>
+                            <option value="15">15 fps (滑らか)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">画質 / 幅 (px)</label>
+                        <select id="widthSelect" class="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white">
+                            <option value="200">200px (小)</option>
+                            <option value="320" selected>320px (標準)</option>
+                            <option value="480">480px (大)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button id="convertBtn" 
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl transition duration-200 shadow-md">
+                    GIFに変換する
+                </button>
+            </div>
+
+            <!-- 進捗状況 -->
+            <div id="progressContainer" class="hidden text-center py-4">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-600 border-t-transparent mb-2"></div>
+                <p id="progressText" class="text-sm font-medium text-gray-600">変換中... しばらくお待ちください</p>
+            </div>
+
+            <!-- 変換結果エリア -->
+            <div id="resultContainer" class="hidden space-y-4 text-center border-t pt-6">
+                <h3 class="text-lg font-bold text-gray-800">🎉 変換完了！</h3>
+                <div class="inline-block border rounded-xl overflow-hidden shadow bg-gray-100 p-2">
+                    <!-- 画像タグを右クリック・長押し操作で確実に保存できるように設定 -->
+                    <img id="gifResult" class="max-h-64 mx-auto select-all cursor-pointer block" alt="変換されたGIF画像" title="右クリックまたは長押しで画像を保存">
+                </div>
+                <!-- ユーザーが直接保存できる旨の明確な指示 -->
+                <p class="text-xs text-gray-500 font-medium">
+                    💡 ボタンでダウンロードできない場合は、上の画像を<span class="text-indigo-600 font-bold">右クリック</span>（スマホは<span class="text-indigo-600 font-bold">長押し</span>）して「画像を保存」してください。
+                </p>
+                <div>
+                    <a id="downloadBtn" download="converted.gif" 
+                        class="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-xl transition duration-200 shadow-md cursor-pointer select-none">
+                        GIF画像をダウンロード
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- フッター -->
+    <footer class="bg-gray-100 text-center py-4 text-xs text-gray-500 border-t">
+        <p>&copy; 2026 MP4 to GIF Converter. All rights reserved.</p>
+    </footer>
+
+    <!-- スクリプトのロジック -->
+    <script>
+        const videoInput = document.getElementById('videoInput');
+        const previewContainer = document.getElementById('previewContainer');
+        const videoPreview = document.getElementById('videoPreview');
+        const convertBtn = document.getElementById('convertBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressText = document.getElementById('progressText');
+        const resultContainer = document.getElementById('resultContainer');
+        const gifResult = document.getElementById('gifResult');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const fpsSelect = document.getElementById('fpsSelect');
+        const widthSelect = document.getElementById('widthSelect');
+
+        let videoUrl = '';
+        let currentGifBlobUrl = null;
+
+        /**
+         * Base64 Data URLをBlobオブジェクトに変換する関数
+         * @param {string} dataURI - 画像のData URL文字列
+         * @returns {Blob} Binary Blob オブジェクト
+         */
+        function dataURItoBlob(dataURI) {
+            try {
+                const byteString = atob(dataURI.split(',')[1]);
+                const mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+                const ab = new ArrayBuffer(byteString.length);
+                const ia = new Uint8Array(ab);
+                for (let i = 0; i < byteString.length; i++) {
+                    ia[i] = byteString.charCodeAt(i);
+                }
+                return new Blob([ab], { type: mimeString || 'image/gif' });
+            } catch (e) {
+                console.error('Blob変換エラー:', e);
+                return null;
+            }
+        }
+
+        videoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (videoUrl) {
+                URL.revokeObjectURL(videoUrl);
+            }
+
+            videoUrl = URL.createObjectURL(file);
+            videoPreview.src = videoUrl;
+            previewContainer.classList.remove('hidden');
+            resultContainer.classList.add('hidden');
+        });
+
+        convertBtn.addEventListener('click', () => {
+            if (!videoUrl) return;
+
+            previewContainer.classList.add('hidden');
+            progressContainer.classList.remove('hidden');
+            resultContainer.classList.add('hidden');
+
+            const fps = parseInt(fpsSelect.value);
+            const width = parseInt(widthSelect.value);
+
+            // gifshotライブラリを使用して動画からGIFを生成
+            gifshot.createGIF({
+                video: [videoUrl],
+                fps: fps,
+                width: width,
+                interval: 0.1,
+                numFrames: 30, // フレーム数（長さに応じて調整）
+                progressCallback: (p) => {
+                    progressText.textContent = `変換中... ${Math.round(p * 100)}%`;
+                }
+            }, (obj) => {
+                progressContainer.classList.add('hidden');
+                if (!obj.error) {
+                    const gifImageSrc = obj.image;
+
+                    // 以前生成したBlob URLのメモリ解放
+                    if (currentGifBlobUrl) {
+                        URL.revokeObjectURL(currentGifBlobUrl);
+                        currentGifBlobUrl = null;
+                    }
+
+                    // Base64からBlobを作成し、信頼性の高いBlob URLを生成
+                    const gifBlob = dataURItoBlob(gifImageSrc);
+                    if (gifBlob) {
+                        currentGifBlobUrl = URL.createObjectURL(gifBlob);
+                        gifResult.src = currentGifBlobUrl;
+                        downloadBtn.href = currentGifBlobUrl;
+                    } else {
+                        // 万が一Blob変換に失敗した場合のフォールバック
+                        gifResult.src = gifImageSrc;
+                        downloadBtn.href = gifImageSrc;
+                    }
+
+                    downloadBtn.setAttribute('download', 'converted.gif');
+                    resultContainer.classList.remove('hidden');
+                } else {
+                    alert('変換に失敗しました。別の動画でお試しください。');
+                    previewContainer.classList.remove('hidden');
+                }
+            });
+        });
+
+        // ダウンロードボタンの信頼性の向上（プログラムクリック発火）
+        downloadBtn.addEventListener('click', (e) => {
+            const targetHref = downloadBtn.getAttribute('href');
+            if (!targetHref || targetHref === '#') {
+                e.preventDefault();
+                return;
+            }
+
+            // iOS Safariや一部のモバイルブラウザ向けに、プログラム的なアンカータグ生成・クリックによるダウンロードを適用
+            if (!downloadBtn.hasAttribute('data-download-triggered')) {
+                e.preventDefault();
+                const tempAnchor = document.createElement('a');
+                tempAnchor.href = targetHref;
+                tempAnchor.download = 'converted.gif';
+                tempAnchor.style.display = 'none';
+                document.body.appendChild(tempAnchor);
+                tempAnchor.click();
+                document.body.removeChild(tempAnchor);
+            }
+        });
+    </script>
+</body>
+</html>
